@@ -1,0 +1,19 @@
+Question 1:
+Develop two learning algorithms: batch and stochastic gradient descent for this problem on the Auto dataset given in the Problem 4 in 
+Homework 1. Try to find the two best input features for predicting the output mpg. Compare and report the difference between your full 
+coding and R's built-in function call: lm. (Hint: At least your stochastic gradient algorithm must learn parameters theta comparable to 
+the result from calling the R's built-in function. Otherwise try to tune the learning rate alpha < 1:0)
+
+Question 2:
+Given the training data, you are to perform a logistic regression where the input features are five of Lag variables and Volume, and the 
+binary output is Direction. Use the summary function to print our the results. Report the confusion matrix and the accuracy on both 
+training and test data given the learned model. (Hint: As nothing is specified, your default threshold to decide Up/Down must be 0.5)
+Now you will run logistic regression five times with only one input features Lagj(1 <= j <= 5) for each time. Compute the confusion matrix
+and the accuracy on both training and test data given each of the learned models. Which are the best models among the five models here and
+the earlier model in part (c) in terms of the accuracy and F-score, respectively? Does the best model also achieve the best accuracy or 
+F-score on the training data? (Hint: The best model must be chosen based on the test data, not the training data!)
+Try to draw six ROC curves for 6 models from the part (c) and (d) with varying thresholds. Determine the best model in terms of the Area 
+Under Curve (AUC). (Note: 6 curves must be plotted at the same time as a single graph. You can use R's built-in function to compute the AUC)
+Try to draw six Precision-Recall curves for 6 models from the part (c) and (d) with varying thresholds. Determine the best model in terms 
+of the Area Under Curve (AUC). (Note: 6 curves must be plotted at the same time as a single graph. You can use R's builtin function to 
+compute the AUC)
