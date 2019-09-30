@@ -1,0 +1,441 @@
+#####    QUESTION 1    #####
+
+library(ISLR)
+auto_df = ISLR::Auto
+
+Auto_data<- within(Auto, rm("name","horsepower","cylinders","acceleration","displacement","origin"))
+
+FeatureScaling <- function(x){
+  mu <- mean(x)
+  si <- sd(x)
+  x_norm <- (x - mu)/si
+  return(x_norm)
+}
+
+str(Auto)
+y<-Auto_data$mpg
+x1<-FeatureScaling(Auto_data$weight)
+x2<-FeatureScaling(Auto_data$year)
+
+X<-cbind(1,x1,x2)
+theta<-c(0,0,0)
+
+len_d <- length(y)
+Cost <- sum(((X%*%theta)- y)^2)/(2*len_d)
+print(Cost)
+
+y<-Auto_data$mpg
+x1<-FeatureScaling(Auto_data$weight)
+x2<-FeatureScaling(Auto_data$year)
+
+###### LM MODEL #####
+LM_Model = lm(y ~ x1 + x2, data=Auto_data)
+summary(LM_Model)
+
+#### Batch Gradient Descent ####
+alpha <- 0.0001           # Set learning parameter
+iterations <- 1500      # Number of iterations
+theta<-c(0,0,0)
+for(i in 1:iterations)
+{
+  #print(i)
+  theta[1] <- theta[1] - alpha * (1/len_d) * sum(((X%*%theta)- y))
+  theta[2] <- theta[2] - alpha * (1/len_d) * sum(((X%*%theta)- y)*X[,2])
+  theta[3] <- theta[3] - alpha * (1/len_d) * sum(((X%*%theta)- y)*X[,3])
+  LM_BG_cost <- sum(((X%*%theta)- y)^2)/(2*len_d)
+}
+
+print(theta)
+print (LM_BG_cost)
+
+#### Stochastic Gradient Descent ####
+
+alpha <- 0.6            # Set learning parameter
+iterations <- 300       # Number of iterations
+
+theta<-c(0,0,0)
+X=cbind(y,X)
+set.seed(587)
+nr<-dim(X)[1]
+randomSample<-X[sample.int(nr),]
+y<- randomSample[,1]
+X<- randomSample[,2:4]
+t=1
+for(i in 1:iterations){
+  for(t in 1:len_d)
+  {
+    theta[1] <- theta[1] - alpha *((X[t,]%*%theta)- y[t])
+    theta[2] <- theta[2] - alpha * ((X[t,]%*%theta)- y[t])*X[t,2]
+    theta[3] <- theta[3] - alpha * ((X[t,]%*%theta)- y[t])*X[t,3]
+  }
+}
+print(theta)
+LM_SG_cost <- sum(((X%*%theta)- y)^2)/(2*len_d)
+print(LM_SG_cost)
+
+
+
+
+
+
+#####    QUESTION 2    #####
+
+
+# Installing the required packages:
+install.packages("ISLR")
+install.packages("caret")
+install.packages("ROCR")
+
+library(ISLR)
+library(caret)
+library(ROCR)
+
+# Loading the Weekly data and understanding its statistics
+main_data=Weekly
+summary(main_data)
+str(main_data)
+
+# Splitting the data into training and test data
+training_data=main_data[main_data$Year<2009,]    #985 observations got shortlisted here
+
+test_data=main_data[main_data$Year>2008,]        #104 observations got shortlisted here
+
+# Running Logistic Regression on 5 Lag and Volume variables
+logit=glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume,data=training_data,family = 'binomial')
+summary(logit)
+
+# Getting the confusion matrix
+pred_training=predict(logit, training_data, type='response')
+pred_training_threshold=as.numeric(pred_training>0.5)
+x_c1=table(pred_training_threshold,training_data$Direction)
+x_c1
+
+precision_c1=x_c1[2,2]/(x_c1[2,2]+x_c1[2,1])     # ~0.568
+recall_c1=x_c1[2,2]/(x_c1[2,2]+x_c1[1,2])        # ~0.871
+accuracy_c1=(x_c1[1,1]+x_c1[2,2])/(x_c1[1,1]+x_c1[2,2]+x_c1[1,2]+x_c1[2,1])     # ~0.562
+Fscore_c1=(2*recall_c1*precision_c1)/(recall_c1+precision_c1)             # ~0.687
+summary=matrix(c(precision_c1,recall_c1,accuracy_c1,Fscore_c1),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary_c1=as.table(summary)
+summary_c1
+
+pred_test=predict(logit, test_data, type='response')
+pred_test_threshold=as.numeric(pred_test>0.5)
+x_c2=table(pred_test_threshold,test_data$Direction)
+x_c2
+precision_c2=x_c2[2,2]/(x_c2[2,2]+x_c2[2,1])    # ~0.586
+recall_c2=x_c2[2,2]/(x_c2[2,2]+x_c2[1,2])       # ~0.279
+accuracy_c2=(x_c2[1,1]+x_c2[2,2])/(x_c2[1,1]+x_c2[2,2]+x_c2[1,2]+x_c2[2,1])     # ~0.462
+Fscore_c2=(2*recall_c2*precision_c2)/(recall_c2+precision_c2)                   # ~0.378
+summary=matrix(c(precision_c2,recall_c2,accuracy_c2,Fscore_c2),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary_c2=as.table(summary)
+summary_c2
+
+pred_c1=prediction(pred_training,training_data$Direction)
+roc_c1=performance(pred_c1,"tpr","fpr")
+plot(roc_c1,col="blue")
+auc_c1=performance(pred_c1,'auc')
+auc_c1
+
+pred_c2=prediction(pred_training,training_data$Direction)
+roc_c2=performance(pred_c2,"tpr","fpr")
+plot(roc_c2,col="red",add=T)
+auc_c2=performance(pred_c2,'auc')
+auc_c2
+
+pred1.1=prediction(predtrn,training_data$Direction)
+pr1.1=performance(pred1.1,"prec","rec")
+plot(pr1.1,col="red")
+
+pred1.2=prediction(predtrn,training_data$Direction)
+pr1.2=performance(pred1.2,"prec","rec")
+plot(pr1.2,col="blue",add=T)
+
+logit=glm(Direction~Lag1,data=training_data,family = 'binomial')
+summary(logit)
+
+predtrn=predict(logit, training_data, type='response')
+predtrn_thresh=as.numeric(predtrn>0.5)
+x2.1=table(predtrn_thresh,training_data$Direction)
+x2.1
+precision2.1=x[2,2]/(x[2,2]+x[2,1])
+recall2.1=x[2,2]/(x[2,2]+x[1,2])
+accuracy2.1=(x[1,1]+x[2,2])/(x[1,1]+x[2,2]+x[1,2]+x[2,1])
+Fscore2.1=(2*recall2.1*precision2.1)/(recall2.1+precision2.1)
+summary=matrix(c(precision2.1,recall2.1,accuracy2.1,Fscore2.1),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary2.1=as.table(summary)
+summary2.1
+
+
+predtst=predict(logit, test_data, type='response')
+predtst_thresh=as.numeric(predtst>0.5)
+x2.2=table(predtst_thresh,test_data$Direction)
+x2.2
+precision2.2=x[2,2]/(x[2,2]+x[2,1])
+recall2.2=x[2,2]/(x[2,2]+x[1,2])
+accuracy2.2=(x[1,1]+x[2,2])/(x[1,1]+x[2,2]+x[1,2]+x[2,1])
+Fscore2.2=(2*recall2.2*precision2.2)/(recall2.2+precision2.2)
+summary=matrix(c(precision2.2,recall2.2,accuracy2.2,Fscore2.2),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary2.2=as.table(summary)
+summary2.2
+
+pred2.1=prediction(predtrn,training_data$Direction)
+roc2.1=performance(pred2.1,"tpr","fpr")
+plot(roc2.1,col="red")
+auc2.1=performance(pred2.1,'auc')
+auc2.1
+
+pred2.2=prediction(predtrn,training_data$Direction)
+roc2.2=performance(pred2.2,"tpr","fpr")
+plot(roc2.2,col="blue",add=T)
+auc2.2=performance(pred2.2,'auc')
+auc2.2
+
+pred2.1=prediction(predtrn,training_data$Direction)
+pr2.1=performance(pred2.1,"prec","rec")
+plot(pr2.1,col="red")
+
+pred2.2=prediction(predtrn,training_data$Direction)
+pr2.2=performance(pred2.2,"prec","rec")
+plot(pr2.2,col="blue",add=T)
+
+logit=glm(Direction~Lag2,data=training_data,family = 'binomial')
+summary(logit)
+
+predtrn=predict(logit, training_data, type='response')
+predtrn_thresh=as.numeric(predtrn>0.5)
+x3.1=table(predtrn_thresh,training_data$Direction)
+x3.1
+precision3.1=x[2,2]/(x[2,2]+x[2,1])
+recall3.1=x[2,2]/(x[2,2]+x[1,2])
+accuracy3.1=(x[1,1]+x[2,2])/(x[1,1]+x[2,2]+x[1,2]+x[2,1])
+Fscore3.1=(2*recall3.1*precision3.1)/(recall3.1+precision3.1)
+summary=matrix(c(precision3.1,recall3.1,accuracy3.1,Fscore3.1),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary3.1=as.table(summary)
+summary3.1
+
+
+predtst=predict(logit, test_data, type='response')
+predtst_thresh=as.numeric(predtst>0.5)
+x3.2=table(predtst_thresh,test_data$Direction)
+x3.2
+precision3.2=x[2,2]/(x[2,2]+x[2,1])
+recall3.2=x[2,2]/(x[2,2]+x[1,2])
+accuracy3.2=(x[1,1]+x[2,2])/(x[1,1]+x[2,2]+x[1,2]+x[2,1])
+Fscore3.2=(2*recall3.2*precision3.2)/(recall3.2+precision3.2)
+summary=matrix(c(precision3.2,recall3.2,accuracy3.2,Fscore3.2),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary3.2=as.table(summary)
+summary3.2
+
+pred3.1=prediction(predtrn,training_data$Direction)
+roc3.1=performance(pred3.1,"tpr","fpr")
+plot(roc3.1,col="red")
+auc3.1=performance(pred3.1,'auc')
+auc3.1
+
+pred3.2=prediction(predtrn,training_data$Direction)
+roc3.2=performance(pred3.2,"tpr","fpr")
+plot(roc3.2,col="blue",add=T)
+auc3.2=performance(pred3.2,'auc')
+auc3.2
+
+pred3.1=prediction(predtrn,training_data$Direction)
+pr3.1=performance(pred3.1,"prec","rec")
+plot(pr3.1,col="red")
+
+pred3.2=prediction(predtrn,training_data$Direction)
+pr3.2=performance(pred3.2,"prec","rec")
+plot(pr3.2,col="blue",add=T)
+
+logit=glm(Direction~Lag3,data=training_data,family = 'binomial')
+summary(logit)
+
+predtrn=predict(logit, training_data, type='response')
+predtrn_thresh=as.numeric(predtrn>0.5)
+x4.1=table(predtrn_thresh,training_data$Direction)
+x4.1
+precision4.1=x[1,2]/(x[1,2]+x[1,1])
+recall4.1=x[1,2]/(x[1,2])
+accuracy4.1=(x[1,2])/(x[1,1]+x[1,2])
+Fscore4.1=(2*recall4.1*precision4.1)/(recall4.1+precision4.1)
+summary=matrix(c(precision4.1,recall4.1,accuracy4.1,Fscore4.1),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary4.1=as.table(summary)
+summary4.1
+
+
+predtst=predict(logit, test_data, type='response')
+predtst_thresh=as.numeric(predtst>0.5)
+x4.2=table(predtst_thresh,test_data$Direction)
+x4.2
+precision4.2=x[1,2]/(x[1,2]+x[1,1])
+recall4.2=x[1,2]/(x[1,2])
+accuracy4.2=(x[1,2])/(x[1,1]+x[1,2])
+Fscore4.2=(2*recall4.2*precision4.2)/(recall4.2+precision4.2)
+summary=matrix(c(precision4.2,recall4.2,accuracy4.2,Fscore4.2),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary4.2=as.table(summary)
+summary4.2
+
+pred4.1=prediction(predtrn,training_data$Direction)
+roc4.1=performance(pred4.1,"tpr","fpr")
+plot(roc4.1,col="red")
+auc4.1=performance(pred4.1,'auc')
+auc4.1
+
+pred4.2=prediction(predtrn,training_data$Direction)
+roc4.2=performance(pred4.2,"tpr","fpr")
+plot(roc4.2,col="blue",add=T)
+auc4.2=performance(pred4.2,'auc')
+auc4.2
+
+pred4.1=prediction(predtrn,training_data$Direction)
+pr4.1=performance(pred4.1,"prec","rec")
+plot(pr4.1,col="red")
+
+pred4.2=prediction(predtrn,training_data$Direction)
+pr4.2=performance(pred4.2,"prec","rec")
+plot(pr4.2,col="blue",add=T)
+
+logit=glm(Direction~Lag4,data=training_data,family = 'binomial')
+summary(logit)
+
+predtrn=predict(logit, training_data, type='response')
+predtrn_thresh=as.numeric(predtrn>0.5)
+x5.1=table(predtrn_thresh,training_data$Direction)
+x5.1
+precision5.1=x[1,2]/(x[1,2]+x[1,1])
+recall5.1=x[1,2]/(x[1,2])
+accuracy5.1=(x[1,2])/(x[1,1]+x[1,2])
+Fscore5.1=(2*recall5.1*precision5.1)/(recall5.1+precision5.1)
+summary=matrix(c(precision5.1,recall5.1,accuracy5.1,Fscore5.1),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary5.1=as.table(summary)
+summary5.1
+
+
+predtst=predict(logit, test_data, type='response')
+predtst_thresh=as.numeric(predtst>0.5)
+x5.2=table(predtst_thresh,test_data$Direction)
+x5.2
+precision5.2=x[1,2]/(x[1,2]+x[1,1])
+recall5.2=x[1,2]/(x[1,2])
+accuracy5.2=(x[1,2])/(x[1,1]+x[1,2])
+Fscore5.2=(2*recall5.2*precision5.2)/(recall5.2+precision5.2)
+summary=matrix(c(precision5.2,recall5.2,accuracy5.2,Fscore5.2),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary5.2=as.table(summary)
+summary5.2
+
+pred5.1=prediction(predtrn,training_data$Direction)
+roc5.1=performance(pred5.1,"tpr","fpr")
+plot(roc5.1,col="red")
+auc5.1=performance(pred5.1,'auc')
+auc5.1
+
+pred5.2=prediction(predtrn,training_data$Direction)
+roc5.2=performance(pred5.2,"tpr","fpr")
+plot(roc5.2,col="blue",add=T)
+auc5.2=performance(pred5.2,'auc')
+auc5.2
+
+
+pred5.1=prediction(predtrn,training_data$Direction)
+pr5.1=performance(pred5.1,"prec","rec")
+plot(pr5.1,col="red")
+
+pred5.2=prediction(predtrn,training_data$Direction)
+pr5.2=performance(pred5.2,"prec","rec")
+plot(pr5.2,col="blue",add=T)
+
+logit=glm(Direction~Lag5,data=training_data,family = 'binomial')
+summary(logit)
+
+predtrn=predict(logit, training_data, type='response')
+predtrn_thresh=as.numeric(predtrn>0.5)
+x6.1=table(predtrn_thresh,training_data$Direction)
+x6.1
+precision6.1=x[2,2]/(x[2,2]+x[2,1])
+recall6.1=x[2,2]/(x[2,2]+x[1,2])
+accuracy6.1=(x[1,1]+x[2,2])/(x[1,1]+x[2,2]+x[1,2]+x[2,1])
+Fscore6.1=(2*recall6.1*precision6.1)/(recall6.1+precision6.1)
+summary=matrix(c(precision6.1,recall6.1,accuracy6.1,Fscore6.1),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary6.1=as.table(summary)
+summary6.1
+
+
+predtst=predict(logit, test_data, type='response')
+predtst_thresh=as.numeric(predtst>0.5)
+x6.2=table(predtst_thresh,test_data$Direction)
+x6.2
+precision6.2=x[2,2]/(x[2,2]+x[2,1])
+recall6.2=x[2,2]/(x[2,2]+x[1,2])
+accuracy6.2=(x[1,1]+x[2,2])/(x[1,1]+x[2,2]+x[1,2]+x[2,1])
+Fscore6.2=(2*recall6.2*precision6.2)/(recall6.2+precision6.2)
+summary=matrix(c(precision6.2,recall6.2,accuracy6.2,Fscore6.2),ncol=1,byrow = T)
+colnames(summary)=c("Summary")
+rownames(summary)=c("Precision","Recall","Accuracy","F-Score")
+summary6.2=as.table(summary)
+summary6.2
+
+pred6.1=prediction(predtrn,training_data$Direction)
+roc6.1=performance(pred6.1,"tpr","fpr")
+plot(roc6.1,col="red")
+auc6.1=performance(pred6.1,'auc')
+auc6.1
+
+pred6.2=prediction(predtrn,training_data$Direction)
+roc6.2=performance(pred6.2,"tpr","fpr")
+plot(roc6.2,col="blue",add=T)
+auc6.2=performance(pred6.2,'auc')
+auc6.2
+
+
+pred6.1=prediction(predtrn,training_data$Direction)
+pr6.1=performance(pred6.1,"prec","rec")
+plot(pr6.1,col="red")
+
+
+pred6.2=prediction(predtrn,training_data$Direction)
+pr6.2=performance(pred1.2,"prec","rec")
+plot(pr6.2,col="blue",add=T)
+
+x1.2
+x2.2
+x3.2
+x4.2
+x5.2
+x6.2
+
+plot(roc1.2,col="red",add=T)
+plot(roc2.2,col="green",add=T)
+plot(roc3.2,col="blue",add=T)
+plot(roc4.2,col="pink",add=T)
+plot(roc5.2,col="yellow",add=T)
+plot(roc6.2,col="orange",add=T)
+
+plot(pr1.2,col="red",add=T)
+plot(pr2.2,col="green",add=T)
+plot(pr3.2,col="blue",add=T)
+plot(pr4.2,col="pink",add=T)
+plot(pr5.2,col="yellow",add=T)
+plot(pr6.2,col="orange",add=T)
+
+
