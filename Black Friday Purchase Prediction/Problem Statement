@@ -1,0 +1,8 @@
+The problem in hand is a study of sales through customer behavior in a retail store during Black Friday. The store wants to understand 
+the customer purchase behavior better against different products.
+
+- Regression problem where we would predict the dependent variable (purchase amount) with the help of information contained in other 
+variables
+- Classification problem since several variables are categorical, approaches like predicting the age of the consumer, predicting the 
+category of goods bought, etc.
+- Clustering problem where we can cluster customers according to their similar characteristics
